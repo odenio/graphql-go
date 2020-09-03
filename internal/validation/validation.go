@@ -95,7 +95,15 @@ func Validate(s *schema.Schema, doc *query.Document, variables map[string]interf
 			if !canBeInput(t) {
 				c.addErr(v.TypeLoc, "VariablesAreInputTypes", "Variable %q cannot be non-input type %q.", "$"+v.Name.Name, t)
 			}
-			validateValue(opc, v, variables[v.Name.Name], t)
+
+			// NOTE+TODO(hamohl): Bypass the strict input field validation
+			// to keep the old, laxer format for backwards compatibility. We mostly
+			// do these checks in the resolver code anyways.
+			//
+			// We should aim to enable this check again, but it requires some TLC to get
+			// mutations, scalars, tests etc working with the stricter validation.
+			//
+			// validateValue(opc, v, variables[v.Name.Name], t)
 
 			if v.Default != nil {
 				validateLiteral(opc, v.Default)

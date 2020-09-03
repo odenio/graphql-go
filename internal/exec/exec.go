@@ -96,10 +96,18 @@ func (r *Request) execSelections(ctx context.Context, sels []selected.Selection,
 		// If a non-nullable child resolved to null, an error was added to the
 		// "errors" list in the response, so this field resolves to null.
 		// If this field is non-nullable, the error is propagated to its parent.
-		if _, ok := f.field.Type.(*common.NonNull); ok && resolvedToNull(f.out) {
-			out.Reset()
-			out.Write([]byte("null"))
-			return
+		if nonNullField, ok := f.field.Type.(*common.NonNull); ok && resolvedToNull(f.out) {
+			// NOTE+TODO(hamohl): Bypass this check for non-nullable list resolvers,
+			// in order to keep `return nil, err` as a valid response.
+			//
+			// We can remove this if we do one of the following across the board:
+			// 1) Use non-nullable `[Foo!]!` list types, and return `[]*Foo{}, err` on error
+			// 1) Use nullable `[Foo!]` list types, and keep returning `nil, err` on error
+			if nonNullField.OfType.Kind() != "LIST" {
+				out.Reset()
+				out.Write([]byte("null"))
+				return
+			}
 		}
 
 		if i > 0 {
@@ -313,16 +321,19 @@ func (r *Request) execList(ctx context.Context, sels []selected.Selection, typ *
 	entryouts := make([]bytes.Buffer, l)
 
 	if selected.HasAsyncSel(sels) {
-		var wg sync.WaitGroup
-		wg.Add(l)
+		concurrency := cap(r.Limiter)
+		sem := make(chan struct{}, concurrency)
 		for i := 0; i < l; i++ {
+			sem <- struct{}{}
 			go func(i int) {
-				defer wg.Done()
+				defer func() { <-sem }()
 				defer r.handlePanic(ctx)
 				r.execSelectionSet(ctx, sels, typ.OfType, &pathSegment{path, i}, s, resolver.Index(i), &entryouts[i])
 			}(i)
 		}
-		wg.Wait()
+		for i := 0; i < concurrency; i++ {
+			sem <- struct{}{}
+		}
 	} else {
 		for i := 0; i < l; i++ {
 			r.execSelectionSet(ctx, sels, typ.OfType, &pathSegment{path, i}, s, resolver.Index(i), &entryouts[i])
