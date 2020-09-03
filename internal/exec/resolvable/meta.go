@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/graph-gophers/graphql-go/internal/common"
-	"github.com/graph-gophers/graphql-go/internal/schema"
-	"github.com/graph-gophers/graphql-go/introspection"
+	"github.com/odenio/graphql-go/internal/common"
+	"github.com/odenio/graphql-go/internal/schema"
+	"github.com/odenio/graphql-go/introspection"
 )
 
 // Meta defines the details of the metadata schema for introspection.
