@@ -98,11 +98,11 @@ func (r *Request) execSelections(ctx context.Context, sels []selected.Selection,
 		// If this field is non-nullable, the error is propagated to its parent.
 		if nonNullField, ok := f.field.Type.(*common.NonNull); ok && resolvedToNull(f.out) {
 			// NOTE+TODO(hamohl): Bypass this check for non-nullable list resolvers,
-			// in order to keep `return nil, err` as a valid response.
+			// in order to keep `nil, err` as a valid response on error.
 			//
 			// We can remove this if we do one of the following across the board:
 			// 1) Use non-nullable `[Foo!]!` list types, and return `[]*Foo{}, err` on error
-			// 1) Use nullable `[Foo!]` list types, and keep returning `nil, err` on error
+			// 2) Use nullable `[Foo!]` list types, and keep returning `nil, err` on error
 			if nonNullField.OfType.Kind() != "LIST" {
 				out.Reset()
 				out.Write([]byte("null"))
